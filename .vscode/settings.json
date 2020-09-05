@@ -1,0 +1,5 @@
+{
+	// Stop rust-analyzer from complaining about
+	// "can't find crate for test" in main
+	"rust-analyzer.checkOnSave.allTargets": false
+}
