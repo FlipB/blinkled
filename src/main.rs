@@ -11,8 +11,12 @@ use stm32f4xx_hal as hal;
 use hal::prelude::*;
 use hal::stm32;
 
+use rtt_target::{rprintln, rtt_init_print};
+
 #[entry]
 fn main() -> ! {
+    rtt_init_print!();
+
     let p = stm32::Peripherals::take().unwrap();
     let cp = cortex_m::peripheral::Peripherals::take().unwrap();
 
@@ -26,10 +30,12 @@ fn main() -> ! {
     // Create a delay abstraction based on SysTick
     let mut delay = hal::delay::Delay::new(cp.SYST, clocks);
 
+    rprintln!("Entering the loop");
+
     loop {
         led.set_low().unwrap();
-        delay.delay_ms(500_u32);
+        delay.delay_ms(100_u32);
         led.set_high().unwrap();
-        delay.delay_ms(500_u32);
+        delay.delay_ms(100_u32);
     }
 }

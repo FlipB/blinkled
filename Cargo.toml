@@ -12,6 +12,16 @@ cortex-m-rt = "0.6"
 # Panic behaviour, see https://crates.io/keywords/panic-impl for alternatives
 panic-halt = "0.2"
 
+[dependencies.rtt-target]
+version = "0.2.2"
+features = ["cortex-m"]
+
 [dependencies.stm32f4xx-hal]
 version = "0.8"
 features = ["rt", "stm32f411"]
+
+[profile.dev]
+debug = 1 # this is the default in dev mode
+
+[profile.release]
+debug = 1 # enable debug info also in release mode

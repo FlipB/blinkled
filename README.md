@@ -44,3 +44,26 @@ Flashing with dfu requires the following procedure.
 ```sh
 $ dfu-util -a0 -s 0x08000000  -D out.bin
 ```
+
+## ST-Link
+
+Using the ST-link with probe-run to flash and run with `cargo run`.
+
+### Install deps
+
+```sh
+$ brew install libftdi
+```
+
+```sh
+$ cargo install cargo-flash
+```
+
+```sh
+$ cargo install probe-run
+```
+
+### Run with probe-run
+
+probe-run is already set as the default cargo runner - just run `cargo run`.
+
