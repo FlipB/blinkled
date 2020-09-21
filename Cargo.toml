@@ -11,6 +11,7 @@ cortex-m = "0.6"
 cortex-m-rt = "0.6"
 # Panic behaviour, see https://crates.io/keywords/panic-impl for alternatives
 panic-halt = "0.2"
+cc1101 = { git = "https://github.com/dsvensson/cc1101" }
 
 [dependencies.rtt-target]
 version = "0.2.2"

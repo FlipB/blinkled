@@ -39,6 +39,7 @@ checksum = "46afbd2983a5d5a7bd740ccb198caf5b82f45c40c09c0eed36052d91cb92e719"
 name = "blinkled"
 version = "0.1.0"
 dependencies = [
+ "cc1101",
  "cortex-m",
  "cortex-m-rt",
  "embedded-hal",
@@ -55,6 +56,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4b9434b9a5aa1450faa3f9cb14ea0e8c53bb5d2b3c1bfd1ab4fc03e9f33fbfb0"
 dependencies = [
  "rustc_version",
+]
+
+[[package]]
+name = "cc1101"
+version = "0.0.3"
+source = "git+https://github.com/dsvensson/cc1101#89a08cc5abc0722bb6e4e4cfbc0c019b01043a01"
+dependencies = [
+ "embedded-hal",
 ]
 
 [[package]]
