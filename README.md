@@ -67,3 +67,6 @@ $ cargo install probe-run
 
 probe-run is already set as the default cargo runner - just run `cargo run`.
 
+### Problems with probe-run
+
+ST-Link seems to drop connection when the MCU enters deep sleep state (wfi - wait for interrupts).
