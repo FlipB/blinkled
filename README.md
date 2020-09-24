@@ -70,3 +70,14 @@ probe-run is already set as the default cargo runner - just run `cargo run`.
 ### Problems with probe-run
 
 ST-Link seems to drop connection when the MCU enters deep sleep state (wfi - wait for interrupts).
+
+# Power draw
+
+Waiting for interrupt, LED off
+	1.5-1.8 mA 3.2V
+Waiting for interrupt, LED on
+	1.86-2.3 mA 3.2V
+Busy loop, LED off
+	3.0 mA 3.2V
+Busy loop, LED on
+	3.1 mA 3.2V

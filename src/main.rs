@@ -8,19 +8,63 @@ use cortex_m_rt::{entry, exception};
 
 use stm32f4xx_hal as hal;
 
+use core::cell::RefCell;
+use hal::interrupt;
+
 use hal::prelude::*;
 use hal::stm32;
 
+use hal::gpio::ExtiPin;
+
 use core::sync::atomic::{AtomicBool, Ordering};
+use cortex_m::interrupt::Mutex;
 
 use rtt_target::{rprintln, rtt_init_print};
 
 static TOGGLE_LED: AtomicBool = AtomicBool::new(false);
+static MUTEX_EXTI: Mutex<RefCell<Option<hal::stm32::EXTI>>> =
+    Mutex::new(RefCell::new(Option::None));
 
-#[exception]
-fn SysTick() {
-    rprintln!("Trying to print");
-    TOGGLE_LED.store(true, Ordering::Release);
+use stm32f4xx_hal::gpio::gpioa::PA0;
+use stm32f4xx_hal::gpio::{Input, PullUp};
+
+static MUTEX_KEY: Mutex<RefCell<Option<PA0<Input<PullUp>>>>> =
+    Mutex::new(RefCell::new(Option::None));
+
+static KEY_PUSHED: AtomicBool = AtomicBool::new(false);
+
+#[interrupt]
+fn EXTI0() {
+    // Enter critical section and unset interrupt EXTI0 pending bit
+    cortex_m::interrupt::free(|cs| {
+        // enter critical section
+        let exti = MUTEX_EXTI.borrow(cs).borrow(); // acquire Mutex
+        if exti.is_none() {
+            return;
+        }
+
+        exti.as_ref()
+            .unwrap() // unwrap RefCell
+            .pr
+            .modify(|_, w| w.pr0().set_bit()); // clear the EXTI line 0 pending bit
+
+        let key_ref = MUTEX_KEY.borrow(cs).borrow();
+        let key = key_ref.as_ref().unwrap();
+
+        let pressed = key.is_low().unwrap();
+        let old_state = KEY_PUSHED.compare_and_swap(!pressed, pressed, Ordering::SeqCst);
+        if old_state != pressed {
+            if pressed {
+                // Key state changed to Down
+                rprintln!("Button is down");
+                TOGGLE_LED.store(false, Ordering::SeqCst);
+            } else {
+                // Key state changed to Up
+                rprintln!("Button is up");
+                TOGGLE_LED.store(true, Ordering::SeqCst);
+            }
+        }
+    });
 }
 
 #[entry]
@@ -30,45 +74,59 @@ fn main() -> ! {
     let p = stm32::Peripherals::take().unwrap();
     let cp = cortex_m::peripheral::Peripherals::take().unwrap();
 
-    let gpioc = p.GPIOC.split();
-    let mut led = gpioc.pc13.into_push_pull_output();
+    let mut syscfg = p.SYSCFG;
+    let mut exti = p.EXTI;
 
-    // Set up the system clock. We want to run at 48MHz for this one.
     let rcc = p.RCC.constrain();
-    let clocks = rcc.cfgr.sysclk(16.mhz()).freeze();
+    let clocks = rcc.cfgr.sysclk(48.mhz()).freeze();
 
     // configure SysTick to generate an exception every second
-    let mut syst = cp.SYST;
-
-    // Set up system timer to trigger interrupt when the counter reaches
-    // set_reload value?
-    // NOTE that counter increments by 1 per CPU clock tick and wraps at
-    // 0x00ffffff, so we cannot run the CPU clock at 48 MHz if we want to sleep for a full second.
-    syst.set_clock_source(cortex_m::peripheral::syst::SystClkSource::Core);
-    syst.set_reload(clocks.sysclk().0);
-    syst.clear_current();
-    syst.enable_counter();
-    syst.enable_interrupt();
+    let syst = cp.SYST;
 
     // Create a delay abstraction based on SysTick
-    //let mut delay = hal::delay::Delay::new(syst, clocks);
+    let mut _delay = hal::delay::Delay::new(syst, clocks);
+
+    // Unmask EXTI0 interrupt
+    exti.imr.modify(|_, w| w.mr0().set_bit());
+
+    // Setup Key to push interrupts
+    let gpioa = p.GPIOA.split();
+    let mut key = gpioa.pa0.into_pull_up_input();
+    key.trigger_on_edge(&mut exti, hal::gpio::Edge::RISING_FALLING);
+    key.make_interrupt_source(&mut syscfg);
+
+    // If key is held down at boot we enter a busy loop (no wait-for-interrupts)
+    // to allow ST-Link flashing
+    if key.is_low().unwrap() {
+        loop {}
+    }
+
+    // Setup LED
+    let gpioc = p.GPIOC.split();
+    let mut led = gpioc.pc13.into_push_pull_output();
+    // Turn on LED to indicate we've "started up".
+    led.set_low().unwrap();
+    let mut led_state = true;
+
+    // Enable EXTI0 Interrupt
+    unsafe {
+        cortex_m::peripheral::NVIC::unmask(stm32f4xx_hal::interrupt::EXTI0);
+    }
+
+    // Enter critical section and store EXTI in global mutex
+    cortex_m::interrupt::free(|cs| {
+        MUTEX_EXTI.borrow(cs).replace(Option::Some(exti));
+        MUTEX_KEY.borrow(cs).replace(Option::Some(key));
+    });
 
     rprintln!("Entering the loop");
-
-    let mut i = 0;
     loop {
-        // sleep
+        // Wait for interrupts
         cortex_m::asm::wfi();
-        if TOGGLE_LED.swap(false, Ordering::AcqRel) {
+
+        if TOGGLE_LED.load(Ordering::SeqCst) != led_state {
+            led_state = !led_state;
             led.toggle().unwrap();
         }
-
-        i = i + 1;
-        if i > 10 {
-            // We break the loop to stop MCU from sleeping too hard.
-            // This will allow us to flash with ST-Link again.
-            break;
-        }
     }
-    loop {}
 }
