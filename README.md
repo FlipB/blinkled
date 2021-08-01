@@ -1,4 +1,4 @@
-# Blinking LED for WeAct STM32F411 MiniF4 
+# Blinking LED for WeAct STM32F4x1 MiniF4 
 
 Blink onboard LED.
 
@@ -24,6 +24,16 @@ $ brew install dfu-util
 ```
 
 # Building
+
+## Memory layout
+
+Ensure the `memory.x` file is updated with the correct values for the board.
+If the board support crate used provides this file the `memory.x` file in the root can be removed.
+`memory.x` files are provided for STM32F411CEU6 and STM32F401CEU6 in `memory_STM32F411CEU6.x` and `memory_STM32F401CEU6`.
+
+`memory.x` file is referenced by `link.x`, in turn referenced by `.cargo/config`.
+
+## Building
 
 ```sh
 $ cargo objcopy --release -- -O binary out.bin
